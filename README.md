@@ -1,5 +1,8 @@
 # inbox-beam
 
+[![npm](https://img.shields.io/npm/v/inbox-beam.svg)](https://www.npmjs.com/package/inbox-beam)
+[![license](https://img.shields.io/npm/l/inbox-beam.svg)](./LICENSE)
+
 Put notifications into your own mailbox without sending email.
 
 To send yourself a contact-form alert or a cron failure, you normally set up a
