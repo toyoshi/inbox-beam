@@ -1,10 +1,13 @@
 # inbox-beam
 
-**Beam app notifications straight into your own mailbox — without sending email.**
+Put notifications into your own mailbox without sending email.
 
-You just want a notification to land in your inbox: a contact-form submission, a cron failure, a "someone signed up" ping. But to *send* an email properly you end up configuring a sending domain, SPF, DKIM, DMARC, and a delivery provider (SES / SendGrid / Resend) — none of which you actually needed. You weren't trying to reach a stranger's inbox. You were trying to reach your own.
+To send yourself a contact-form alert or a cron failure, you normally set up a
+sending domain, SPF, DKIM, DMARC, and a provider like SES or SendGrid. None of
+that is needed to reach your *own* inbox.
 
-`inbox-beam` skips all of that. It uses the IMAP `APPEND` command to write a message **directly into your mailbox**. No SMTP. No sending domain. No deliverability. Just your message, in your inbox.
+inbox-beam uses the IMAP `APPEND` command to write a message directly into your
+mailbox. No SMTP, no sending domain, no deliverability.
 
 ```ts
 import { InboxBeam } from "inbox-beam";
@@ -14,158 +17,122 @@ const beam = new InboxBeam({
   auth: { user: "you@example.com", pass: process.env.IMAP_APP_PASSWORD },
 });
 
-await beam.beam({
-  subject: "New contact form submission",
-  text: "山田太郎 <yamada@example.com>\n資料請求したいです。",
-});
+await beam.beam({ subject: "New contact", text: "someone submitted the form" });
 ```
 
-That message now sits in your inbox, unread, searchable — and nothing was ever sent.
+The message lands in your inbox, unread and searchable. Nothing was sent.
 
----
+## This is not email delivery
 
-## This is NOT email delivery
-
-Read this before using it, so you don't reach for the wrong tool.
-
-`inbox-beam` does **not** send mail. It writes a message into a mailbox you already control via IMAP `APPEND`. That means:
-
-- ✅ **No SPF / DKIM / DMARC.** Nothing is delivered, so domain authentication is irrelevant.
-- ✅ **No deliverability problems.** It either appended or it didn't.
-- ✅ **One secret to manage** — your IMAP credentials.
-- ❌ **It cannot reach anyone else.** It writes to *your* mailbox only. To email a user or customer, use real SMTP / a delivery API.
-- ❌ **No sending record, no audit trail.** The date is whatever the client says. Don't use it where a tamper-resistant send log matters.
-
-Think of it as `console.log()` for your inbox, not as a mailer.
+inbox-beam appends to a mailbox you already control. It does not send mail and
+cannot reach anyone else. To email a user or customer, use SMTP or a delivery
+API. It also keeps no send log and the date is set by the client, so don't use
+it where an audit trail matters. It's for your own notifications.
 
 ## Install
-
-From npm:
 
 ```sh
 npm install inbox-beam
 ```
 
-Or straight from GitHub (builds on install via the `prepare` script):
+Or from GitHub (builds on install):
 
 ```sh
 npm install github:toyoshi/inbox-beam
 ```
 
-Requires Node.js ≥ 18.
+Node.js >= 18.
 
-## Quick start
+## Usage
 
 ```ts
 import { InboxBeam } from "inbox-beam";
 
 const beam = new InboxBeam({
-  host: "imap.gmail.com",          // your IMAP host
-  auth: {
-    user: "you@example.com",
-    pass: process.env.IMAP_APP_PASSWORD,
-  },
-  mailbox: "INBOX",                // or a label/folder like "App Notifications"
-  subjectPrefix: "[my-app]",       // optional, prepended to every subject
+  host: "imap.gmail.com",
+  auth: { user: "you@example.com", pass: process.env.IMAP_APP_PASSWORD },
+  mailbox: "INBOX",            // or a label/folder
+  subjectPrefix: "[my-app]",   // optional
 });
 
-await beam.beam({
-  subject: "Cron job failed",
-  text: "nightly-export exited with code 1",
-});
+await beam.beam({ subject: "Cron failed", text: "nightly-export exited 1" });
 ```
 
-### HTML + plain text
-
-Pass both and you get a `multipart/alternative` message:
+HTML plus text produces a `multipart/alternative` message:
 
 ```ts
 await beam.beam({
   subject: "Weekly report",
-  text: "Signups: 42\nRevenue: ¥120,000",
-  html: "<h1>Weekly report</h1><ul><li>Signups: 42</li><li>Revenue: ¥120,000</li></ul>",
+  text: "Signups: 42",
+  html: "<h1>Weekly report</h1><p>Signups: 42</p>",
 });
 ```
 
-### Beam to a specific label / folder
-
-Safer than dumping into INBOX — create the label in your mail client first, then:
+Override the target mailbox per call:
 
 ```ts
-await beam.beam({
-  subject: "New signup",
-  text: "...",
-  mailbox: "App Notifications",   // overrides the constructor default per-call
-});
+await beam.beam({ subject: "New signup", text: "...", mailbox: "App Notifications" });
 ```
 
 ## Gmail setup
 
-1. Enable IMAP in Gmail settings (Settings → Forwarding and POP/IMAP).
-2. Turn on 2-Step Verification, then create an **App Password** (16 characters): https://myaccount.google.com/apppasswords
-3. Use that as `auth.pass`.
+1. Enable IMAP in Gmail settings.
+2. Turn on 2-Step Verification and create an [App Password](https://myaccount.google.com/apppasswords).
+3. Use it as `auth.pass`.
 
-> Google Workspace admins can disable app passwords. If so, you'll need OAuth2 — pass `auth: { user, accessToken }` instead of `pass`.
-
-A dedicated account (e.g. `notify@yourdomain.com`) that you forward to yourself is safer than putting your primary account's credentials on a server.
+Workspace admins can disable app passwords. In that case pass an OAuth2 token as
+`auth.accessToken` instead of `pass`. A dedicated `notify@` account that
+forwards to you is safer than your primary account's credentials on a server.
 
 ## API
 
 ### `new InboxBeam(options)`
 
-| Option          | Type                          | Default       | Description                                            |
-| --------------- | ----------------------------- | ------------- | ------------------------------------------------------ |
-| `host`          | `string`                      | —             | IMAP host, e.g. `imap.gmail.com`.                      |
-| `auth`          | `{ user, pass?, accessToken? }` | —           | IMAP credentials. App password or OAuth2 access token. |
-| `port`          | `number`                      | `993`         | IMAP port.                                             |
-| `secure`        | `boolean`                     | `true`        | Use TLS.                                               |
-| `mailbox`       | `string`                      | `"INBOX"`     | Default target mailbox / label.                        |
-| `from`          | `string`                      | `auth.user`   | Default From address.                                  |
-| `to`            | `string`                      | `auth.user`   | Default To address.                                    |
-| `unread`        | `boolean`                     | `true`        | Leave appended messages unread (omit `\Seen`).         |
-| `subjectPrefix` | `string`                      | —             | Prepended to every subject.                            |
+| Option | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `host` | `string` | — | IMAP host, e.g. `imap.gmail.com`. |
+| `auth` | `{ user, pass?, accessToken? }` | — | App password or OAuth2 token. |
+| `port` | `number` | `993` | |
+| `secure` | `boolean` | `true` | Use TLS. |
+| `mailbox` | `string` | `"INBOX"` | Target mailbox or label. |
+| `from` | `string` | `auth.user` | Default From. |
+| `to` | `string` | `auth.user` | Default To. |
+| `unread` | `boolean` | `true` | Leave appended messages unread. |
+| `subjectPrefix` | `string` | — | Prepended to every subject. |
 
-### `beam.beam(input) => Promise<BeamResult>`
+### `beam.beam(input)`
 
-| Field     | Type      | Description                                            |
-| --------- | --------- | ----------------------------------------------------- |
-| `subject` | `string`  | Required.                                              |
-| `text`    | `string`  | Plain-text body.                                       |
-| `html`    | `string`  | HTML body. With `text`, becomes `multipart/alternative`. |
-| `from`    | `string`  | Overrides the default From.                            |
-| `to`      | `string`  | Overrides the default To.                              |
-| `mailbox` | `string`  | Overrides the target mailbox for this call.            |
-| `unread`  | `boolean` | Overrides the unread default for this call.            |
+`input`: `subject` (required), `text`, `html`, `from`, `to`, `mailbox`,
+`unread`. Per-call fields override the constructor defaults.
 
-Returns `{ mailbox, uid?, uidValidity? }` — the `uid` is assigned by the server (`APPENDUID`).
+Returns `{ mailbox, uid?, uidValidity? }`. The `uid` comes from the server's
+`APPENDUID` response.
 
-### `buildMessage(input) => string`
+### `buildMessage(input)`
 
-The RFC 5322 message builder is exported separately if you want the raw message without the IMAP connection (zero dependencies, UTF-8 safe):
+The RFC 5322 builder is exported on its own if you want the raw message without
+the IMAP connection. Zero dependencies, UTF-8 safe.
 
 ```ts
 import { buildMessage } from "inbox-beam";
-const raw = buildMessage({ from: "a@x.com", to: "b@x.com", subject: "件名", text: "本文" });
+const raw = buildMessage({ from: "a@x.com", to: "b@x.com", subject: "Hi", text: "Body" });
 ```
 
 ## When to use it
 
-**Good fit**
+Use it for notifications only you or your team read: contact-form copies, error
+alerts, job logs, small tools where standing up email sending isn't worth it.
 
-- Personal / internal notifications only you (or your team) read
-- Contact-form copies, error alerts, job-completion logs
-- Small tools where you don't want to stand up a sending domain
-- You'd rather search your mail than scroll a Slack channel
-
-**Wrong tool**
-
-- Emailing third parties (users, customers) → use SMTP / a delivery API
-- Anything needing an audit trail, bounce handling, or delivery receipts
+Don't use it to email third parties, or where you need delivery receipts, bounce
+handling, or an audit trail.
 
 ## How it works
 
-IMAP's `APPEND` command (RFC 9051 §6.3.12) adds a message to the end of a mailbox. It's the same command your mail client uses to save sent copies and drafts — `inbox-beam` just uses it to drop notifications you composed yourself. Under the hood it builds an RFC 5322 message and appends it over a TLS IMAP connection (via [imapflow](https://imapflow.com)).
+IMAP's `APPEND` command (RFC 9051 §6.3.12) adds a message to the end of a
+mailbox. It's the same command mail clients use to save sent copies and drafts.
+inbox-beam builds an RFC 5322 message and appends it over a TLS IMAP connection
+using [imapflow](https://imapflow.com).
 
 ## License
 
-MIT © toyoshi
+MIT
