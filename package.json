@@ -1,0 +1,56 @@
+{
+  "name": "inbox-beam",
+  "version": "0.1.0",
+  "description": "Beam app notifications straight into your own mailbox via IMAP APPEND — no SMTP, no SPF/DKIM/DMARC.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test test/*.test.ts",
+    "prepare": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "imap",
+    "append",
+    "email",
+    "notification",
+    "inbox",
+    "gmail",
+    "smtp-free",
+    "self-hosted"
+  ],
+  "author": "toyoshi <toyoshi@tokuiten.jp>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/toyoshi/inbox-beam.git"
+  },
+  "homepage": "https://github.com/toyoshi/inbox-beam#readme",
+  "bugs": {
+    "url": "https://github.com/toyoshi/inbox-beam/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "imapflow": "^1.0.171"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
