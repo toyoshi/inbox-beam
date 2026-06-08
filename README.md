@@ -136,6 +136,9 @@ mailbox. It's the same command mail clients use to save sent copies and drafts.
 inbox-beam builds an RFC 5322 message and appends it over a TLS IMAP connection
 using [imapflow](https://imapflow.com).
 
+A Ruby gem with the same behavior, plus a drop-in Action Mailer delivery method,
+is at [inbox_beam](https://github.com/toyoshi/inbox_beam).
+
 ## License
 
 MIT
